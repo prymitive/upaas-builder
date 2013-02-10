@@ -10,6 +10,8 @@ import logging
 
 import lya
 
+import plumbum
+
 from upaas_builder import exceptions
 
 
@@ -95,4 +97,7 @@ class Builder(object):
         """
         Bootstrap base os image.
         """
-        pass
+        log.info(u"Bootstrapping os image using")
+        bash = plumbum.local("bash")
+        for cmd in self.config.bootstrap:
+            plumbum.cmd.sudo[bash["-c", "'%s'" % cmd]]
