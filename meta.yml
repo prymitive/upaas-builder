@@ -1,0 +1,20 @@
+# app metadata used for building packages
+
+os:
+  ubuntu:
+    packages:
+      - python2.7
+    script: # executed on fresh package
+      - bla bla
+
+actions:
+  setup: # app setup on builder
+    before:
+    main:
+    after:
+  start: # start on backend
+    before:
+    after:
+  stop: # stop on backend
+    before:
+    after:

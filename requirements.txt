@@ -1,0 +1,3 @@
+plumbum>=1.1
+layered-yaml-attrdict-config
+pytest

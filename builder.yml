@@ -1,0 +1,31 @@
+# upaas-builder configuration
+
+
+
+logging:
+  handler: stdout
+
+
+paths:
+  # where to store app files during package build
+  workdir: /var/upaas/workdir
+
+
+storage:
+  # class implementing storage access
+  handler: upaas_builder.storage.local.LocalStorage
+  settings:
+    dir: /tmp
+
+
+# commands used to create empty system image
+# variables:
+# %workdir% - chroot directory that should be created
+bootstrap:
+  - debootstrap --components=main,universe,multiverse,restricted `lsb_release -sc` %workdir%
+
+
+commands:
+  # how to install or remove package
+  install: apt-get install %package%
+  uninstall: apt-get remove %package%
