@@ -5,5 +5,5 @@
 """
 
 
-class InvalidStorageConfiguration(Exception):
+class InvalidConfiguration(Exception):
     pass

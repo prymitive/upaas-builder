@@ -3,7 +3,11 @@
 
 
 logging:
-  handler: stdout
+  # 'console' or file path
+  output: console
+
+  # 'debug', 'info', 'warning', 'error'
+  level: info
 
 
 paths:

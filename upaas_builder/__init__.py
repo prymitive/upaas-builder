@@ -5,8 +5,4 @@
 """
 
 
-import logging
-
-
-logging.basicConfig()
-#FIXME configurable logging
+__version__ = '0.1-dev'

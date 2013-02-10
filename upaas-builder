@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+    :copyright: Copyright 2013 by Łukasz Mierzwa
+    :contact: l.mierzwa@gmail.com
+"""
+
+
+import sys
+import codecs
+import logging
+
+from plumbum import cli
+
+from upaas_builder import __version__ as UPAAS_VERSION
+from upaas_builder import exceptions
+from upaas_builder.builder import Builder
+
+
+log = logging.getLogger('upaas-builder')
+
+
+class ExitCodes:
+    ok = 0
+    config_error =1
+
+
+class BuilderApplication(cli.Application):
+
+    VERSION = UPAAS_VERSION
+
+    fresh = cli.Flag(["f", "force-fresh"], help="Force building fresh package")
+
+    log_level = None
+    @cli.switch(["l", "log-level"], str, help="Logging level")
+    def set_log_level(self, level):
+        self.log_level = level
+
+    @cli.switch(["c", "config"], str, help="Configuration file path",
+                mandatory=True)
+    def set_config_path(self, path):
+        self.config_path = path
+
+    def setup_logger(self):
+        output = self.builder.config.get('logging', {}).get('output', 'console')
+        level = self.builder.config.get('logging', {}).get('level', 'info')
+
+        if output == 'console':
+            handler = logging.StreamHandler(
+                codecs.getwriter('utf-8')(sys.stdout))
+        else:
+            handler = logging.FileHandler(output, encoding='utf-8')
+
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s - %(message)s"))
+        log.addHandler(handler)
+
+        log.setLevel(getattr(logging, (self.log_level or level).upper(),
+                             logging.INFO))
+
+    def main(self, name):
+        try:
+            self.builder = Builder(self.config_path)
+        except exceptions.InvalidConfiguration:
+            log.error(u"Invalid configuration, aborting")
+            sys.exit(ExitCodes.config_error)
+
+        self.setup_logger()
+
+        log.info(u"Building package for '%s'" % name)
+
+
+if __name__ == "__main__":
+    BuilderApplication.run()

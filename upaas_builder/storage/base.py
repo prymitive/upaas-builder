@@ -5,7 +5,7 @@
 """
 
 
-from upaas_builder.storage.exceptions import InvalidStorageConfiguration
+from upaas_builder import exceptions
 
 
 class BaseStorage(object):
@@ -13,7 +13,7 @@ class BaseStorage(object):
     def __init__(self, settings):
         self.settings = settings
         if not self.configure():
-            raise InvalidStorageConfiguration
+            raise exceptions.InvalidConfiguration
 
     def configure(self):
         """
