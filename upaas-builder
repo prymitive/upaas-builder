@@ -17,7 +17,7 @@ from upaas_builder import exceptions
 from upaas_builder.builder import Builder
 
 
-log = logging.getLogger('upaas-builder')
+log = logging.getLogger('upaas_builder')
 
 
 class ExitCodes:
@@ -42,10 +42,9 @@ class BuilderApplication(cli.Application):
         self.config_path = path
 
     def setup_logger(self):
-        output = self.builder.config.get('logging', {}).get('output', 'console')
-        level = self.builder.config.get('logging', {}).get('level', 'info')
-
-        if output == 'console':
+        #FIXME
+        output = "console"
+        if output == "console":
             handler = logging.StreamHandler(
                 codecs.getwriter('utf-8')(sys.stdout))
         else:
@@ -55,19 +54,19 @@ class BuilderApplication(cli.Application):
             logging.Formatter("%(asctime)s %(levelname)s - %(message)s"))
         log.addHandler(handler)
 
-        log.setLevel(getattr(logging, (self.log_level or level).upper(),
+        log.setLevel(getattr(logging, (self.log_level or 'info').upper(),
                              logging.INFO))
 
     def main(self, name):
+        self.setup_logger()
         try:
             self.builder = Builder(self.config_path)
         except exceptions.InvalidConfiguration:
-            log.error(u"Invalid configuration, aborting")
+            print(u"Invalid configuration, aborting")
             sys.exit(ExitCodes.config_error)
 
-        self.setup_logger()
-
         log.info(u"Building package for '%s'" % name)
+        self.builder.bootstrap_os()
 
 
 if __name__ == "__main__":

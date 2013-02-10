@@ -6,6 +6,8 @@
 
 
 import os
+import tempfile
+import shutil
 import logging
 
 import lya
@@ -13,6 +15,7 @@ import lya
 import plumbum
 
 from upaas_builder import exceptions
+from upaas_builder import distro
 
 
 log = logging.getLogger(__name__)
@@ -36,12 +39,12 @@ class Builder(object):
         cfg = lya.AttrDict.from_yaml(config_path)
 
         required = {
-            'paths': [{'name': 'workdir', 'type': 'string'}],
-            'storage': [{'name': 'handler', 'type': 'string'}],
-            'bootstrap': [],
-            'commands': [
-                {'name': 'install', 'type': 'string'},
-                {'name': 'uninstall', 'type': 'string'}
+            "paths": [{"name": "workdir", "type": "path"}],
+            "storage": [{"name": "handler", "type": "string"}],
+            "bootstrap": [],
+            "commands": [
+                {"name": "install", "type": "string"},
+                {"name": "uninstall", "type": "string"}
             ],
         }
         for (key, options) in required.items():
@@ -50,18 +53,24 @@ class Builder(object):
                                                                   config_path))
                 raise exceptions.InvalidConfiguration
             for option in options:
-                if not cfg[key].get(option['name']):
+                if not cfg[key].get(option["name"]):
                     log.error(u"Option '%s' is missing from section '%s' in "
-                              u"'%s'" % (option['name'], key, config_path))
+                              u"'%s'" % (option["name"], key, config_path))
                     raise exceptions.InvalidConfiguration
-                value = cfg[key][option['name']]
-                if option['type'] == 'integer':
+                value = cfg[key][option["name"]]
+                if option["type"] == "integer":
                     try:
                         int(value)
                     except ValueError:
                         log.error(u"Option '%s' from section '%s' in '%s' must "
-                                  u"be an integer" % (option['name'], key,
+                                  u"be an integer" % (option["name"], key,
                                                       config_path))
+                        raise exceptions.InvalidConfiguration
+                if option["type"] == "path":
+                    if not os.path.exists(value):
+                        log.error(u"Option '%s' in section '%s' is set to '%s' "
+                                  u"but not such file or directory "
+                                  u"exists" % (option["name"], key, value))
                         raise exceptions.InvalidConfiguration
 
         return cfg
@@ -73,8 +82,8 @@ class Builder(object):
         """
         storage_handler = None
         name = self.config.storage.handler
-        storage_module = ".".join(name.split('.')[0:len(name.split('.')) - 1])
-        storage_class = name.split('.')[len(name.split('.')) - 1]
+        storage_module = ".".join(name.split(".")[0:len(name.split(".")) - 1])
+        storage_class = name.split(".")[len(name.split(".")) - 1]
         try:
             exec("from %s import %s as storage_handler" % (
                 storage_module, storage_class))
@@ -98,6 +107,29 @@ class Builder(object):
         Bootstrap base os image.
         """
         log.info(u"Bootstrapping os image using")
-        bash = plumbum.local("bash")
-        for cmd in self.config.bootstrap:
-            plumbum.cmd.sudo[bash["-c", "'%s'" % cmd]]
+
+        dir = tempfile.mkdtemp(dir=self.config.paths.workdir,
+                               prefix="upaas_bootstrap_")
+        log.debug(u"Created temporary directory for bootstrap at '%s'" % dir)
+
+        with plumbum.local.cwd(dir):
+            bash = plumbum.local["bash"]
+            for cmd in self.config.bootstrap:
+                cmd = cmd.replace("%workdir%", dir)
+                log.info(u"Executing bootstrap command: %s" % cmd)
+
+            log.info(u"Bootstrap done, packing image")
+            tar = plumbum.local["tar"]
+            archive_path = os.path.join(dir, "image.tar.gz")
+            #FIXME make compression configurable
+            try:
+                tar["-czpf", archive_path]()
+            except plumbum.commands.ProcessExecutionError as e:
+                log.error(u"Error during image packing: %s" % e)
+            else:
+                log.info(u"Image packed, uploading")
+                self.storage.put(archive_path, distro.distro_image_filename())
+
+        log.info(u"Image uploaded, cleaning up")
+        shutil.rmtree(dir)
+        log.info(u"All done")
