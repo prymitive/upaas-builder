@@ -14,6 +14,8 @@ import lya
 
 import plumbum
 
+from upaas_storage.exceptions import InvalidStorageConfiguration
+
 from upaas_builder import exceptions
 from upaas_builder import distro
 
@@ -92,7 +94,12 @@ class Builder(object):
                       u"loaded" % self.config.storage.handler)
             raise exceptions.InvalidConfiguration
         else:
-            return storage_handler(self.config.storage.settings)
+            try:
+                return storage_handler(self.config.storage.settings)
+            except InvalidStorageConfiguration:
+                log.error(u"Storage handler failed to initialize with given "
+                          u"configuration")
+                raise exceptions.InvalidConfiguration
 
     def build_package(self, force_fresh=False):
         """
