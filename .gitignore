@@ -33,3 +33,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# pycharm
+.idea
+
+# vagrant
+.vagrant
+Vagrantfile

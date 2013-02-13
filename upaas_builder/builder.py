@@ -14,10 +14,11 @@ import lya
 
 import plumbum
 
-from upaas_storage.exceptions import InvalidStorageConfiguration
+from upaas import distro
+
+from upaas.storage.exceptions import InvalidStorageConfiguration
 
 from upaas_builder import exceptions
-from upaas_builder import distro
 
 
 log = logging.getLogger(__name__)
@@ -64,14 +65,14 @@ class Builder(object):
                     try:
                         int(value)
                     except ValueError:
-                        log.error(u"Option '%s' from section '%s' in '%s' must "
-                                  u"be an integer" % (option["name"], key,
-                                                      config_path))
+                        log.error(u"Option '%s' from section '%s' in '%s' must"
+                                  u" be an integer" % (option["name"], key,
+                                                       config_path))
                         raise exceptions.InvalidConfiguration
                 if option["type"] == "path":
                     if not os.path.exists(value):
-                        log.error(u"Option '%s' in section '%s' is set to '%s' "
-                                  u"but not such file or directory "
+                        log.error(u"Option '%s' in section '%s' is set to '%s'"
+                                  u" but not such file or directory "
                                   u"exists" % (option["name"], key, value))
                         raise exceptions.InvalidConfiguration
 

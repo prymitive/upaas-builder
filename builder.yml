@@ -16,8 +16,8 @@ paths:
 
 
 storage:
-  # class implementing upaas_storage access
-  handler: upaas_storage.local.LocalStorage
+  # class implementing storage access
+  handler: upaas.storage.local.LocalStorage
   settings:
     dir: /tmp
 
