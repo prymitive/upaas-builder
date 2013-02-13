@@ -1,15 +1,6 @@
 # upaas-builder configuration
 
 
-
-logging:
-  # 'console' or file path
-  output: console
-
-  # 'debug', 'info', 'warning', 'error'
-  level: info
-
-
 paths:
   # where to store app files during package build
   workdir: /var/upaas/workdir
@@ -26,7 +17,12 @@ storage:
 # variables:
 # %workdir% - chroot directory that should be created
 bootstrap:
-  - debootstrap --components=main,universe,multiverse,restricted `lsb_release -sc` %workdir%
+  timelimit: 600
+  # envs are optional
+  env:
+    - http_proxy=http://localhost:3128/
+  commands:
+    - debootstrap --components=main,universe,multiverse,restricted `lsb_release -sc` %workdir%
 
 
 commands:

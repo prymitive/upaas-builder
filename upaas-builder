@@ -6,6 +6,7 @@
 """
 
 
+import os
 import sys
 import codecs
 import logging
@@ -17,12 +18,10 @@ from upaas_builder import exceptions
 from upaas_builder.builder import Builder
 
 
-log = logging.getLogger('upaas_builder')
-
-
 class ExitCodes:
     ok = 0
-    config_error =1
+    config_error = 1
+    not_root = 2
 
 
 class BuilderApplication(cli.Application):
@@ -31,10 +30,17 @@ class BuilderApplication(cli.Application):
 
     fresh = cli.Flag(["f", "force-fresh"], help="Force building fresh package")
 
-    log_level = None
+    log = None
+    log_level = "info"
+    log_output = "-"
+
     @cli.switch(["l", "log-level"], str, help="Logging level")
     def set_log_level(self, level):
         self.log_level = level
+
+    @cli.switch(["o", "log-output"], str, help="Log file ('-' for console)")
+    def set_log_output(self, output):
+        self.log_output = output
 
     @cli.switch(["c", "config"], str, help="Configuration file path",
                 mandatory=True)
@@ -42,30 +48,35 @@ class BuilderApplication(cli.Application):
         self.config_path = path
 
     def setup_logger(self):
-        #FIXME
-        output = "console"
-        if output == "console":
+        if self.log_output == "-":
             handler = logging.StreamHandler(
                 codecs.getwriter('utf-8')(sys.stdout))
         else:
-            handler = logging.FileHandler(output, encoding='utf-8')
+            handler = logging.FileHandler(self.log_output, encoding='utf-8')
 
         handler.setFormatter(
             logging.Formatter("%(asctime)s %(levelname)s - %(message)s"))
-        log.addHandler(handler)
+        self.log = logging.getLogger()
+        self.log.addHandler(handler)
 
-        log.setLevel(getattr(logging, (self.log_level or 'info').upper(),
-                             logging.INFO))
+        self.log.setLevel(getattr(logging, self.log_level.upper(),
+                                  logging.INFO))
+
+    def root_check(self):
+        if os.geteuid() != 0:
+            log.error(u"%s must be run as root user" % self.PROGNAME)
+            sys.exit(ExitCodes.not_root)
 
     def main(self, name):
         self.setup_logger()
+        self.root_check()
         try:
             self.builder = Builder(self.config_path)
         except exceptions.InvalidConfiguration:
-            print(u"Invalid configuration, aborting")
+            self.log.error(u"Invalid configuration, aborting")
             sys.exit(ExitCodes.config_error)
 
-        log.info(u"Building package for '%s'" % name)
+        self.log.info(u"Building package for '%s'" % name)
         self.builder.bootstrap_os()
 
 
