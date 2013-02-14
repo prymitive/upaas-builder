@@ -10,7 +10,7 @@ storage:
   # class implementing storage access
   handler: upaas.storage.local.LocalStorage
   settings:
-    dir: /tmp
+    dir: /var/upaas/storage
 
 
 # commands used to create empty system image
@@ -20,7 +20,7 @@ bootstrap:
   timelimit: 600
   # envs are optional
   env:
-    - http_proxy=http://localhost:3128/
+    http_proxy: http://localhost:3128/
   commands:
     - debootstrap --components=main,universe,multiverse,restricted `lsb_release -sc` %workdir%
 
@@ -29,3 +29,49 @@ commands:
   # how to install or remove package
   install: apt-get install %package%
   uninstall: apt-get remove %package%
+
+
+interpreters:
+
+  ruby:
+    any:
+      env:
+        RAILS_ENV: production
+      actions:
+        setup:
+          main:
+            - gem install bundler
+            - bundle install --deployment --without test development
+    1.8.7:
+      packages:
+        - ruby1.8
+        - ruby1.8-dev
+        - rubygems
+    1.9.3:
+      packages:
+        - ruby1.9.1
+        - ruby1.9.1-dev
+
+
+  python:
+    any:
+      actions:
+        setup:
+          main:
+            - pip install -qMU -r requirements.txt
+    2.7:
+      packages:
+        - python2.7
+        - python2.7-dev
+        - python-pip
+    3.2:
+      packages:
+        - python3.2
+        - python3.2-dev
+        - python-pip
+
+  php:
+    5.3:
+      packages:
+        - php5-dev
+        - php-pear

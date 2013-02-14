@@ -15,7 +15,8 @@ import lya
 from upaas import distro
 
 from upaas.storage.exceptions import InvalidStorageConfiguration
-from upaas.commands import execute, CommandTimeoutAlarm
+from upaas import commands
+from upaas import tar
 
 from upaas_builder import exceptions
 
@@ -41,15 +42,15 @@ class Builder(object):
         cfg = lya.AttrDict.from_yaml(config_path)
 
         required = {
-            "paths": [{"name": "workdir", "type": "path"}],
-            "storage": [{"name": "handler", "type": "string"}],
+            "paths": [{"name": "workdir", "types": [basestring], "path": True}],
+            "storage": [{"name": "handler", "types": [basestring]}],
             "bootstrap": [
-                {"name": "timelimit", "type": "integer"},
-                {"name": "commands", "type": "list"}
+                {"name": "timelimit", "types": [int]},
+                {"name": "commands", "types": [list, basestring]}
             ],
             "commands": [
-                {"name": "install", "type": "string"},
-                {"name": "uninstall", "type": "string"}
+                {"name": "install", "types": [basestring]},
+                {"name": "uninstall", "types": [basestring]}
             ],
         }
         for (key, options) in required.items():
@@ -63,28 +64,23 @@ class Builder(object):
                               u"'%s'" % (option["name"], key, config_path))
                     raise exceptions.InvalidConfiguration
                 value = cfg[key][option["name"]]
-                if option["type"] == "integer":
-                    try:
-                        int(value)
-                    except ValueError:
-                        log.error(u"Option '%s' from section '%s' in '%s' must"
-                                  u" be an integer, %s given" % (
-                                  option["name"], key, config_path,
-                                  value.__class__.__name__))
-                        raise exceptions.InvalidConfiguration
-                if option["type"] == "path":
-                    if not os.path.exists(value):
-                        log.error(u"Option '%s' in section '%s' is set to '%s'"
-                                  u" but not such file or directory "
-                                  u"exists" % (option["name"], key, value))
-                        raise exceptions.InvalidConfiguration
-                if option["type"] == "list":
-                    if not isinstance(value, list):
-                        log.error(u"Option '%s' in section '%s' must be a list"
-                                  u", '%s' given" % (option["name"], key,
-                                                     value.__class__.__name__))
-                        raise exceptions.InvalidConfiguration
-
+                is_valid = "types" not in option
+                for vtype in option.get("types", []):
+                    if isinstance(value, vtype):
+                        is_valid = True
+                        break
+                if not is_valid:
+                    log.error(u"Option '%s' from section '%s' in '%s' must "
+                              u"be %s, %s "
+                              u"given" % (option["name"], key, config_path,
+                                          " or ".join(
+                                              repr(t) for t in option["types"]
+                                          ), value.__class__.__name__))
+                    raise exceptions.InvalidConfiguration
+                if "path" in option and not os.path.exists(value):
+                    log.error(u"Path '%s' in option '%s' from section '%s' "
+                              u"does not exist" % (value, option["name"], key))
+                    raise exceptions.InvalidConfiguration
         return cfg
 
     def find_storage_handler(self):
@@ -117,6 +113,10 @@ class Builder(object):
 
         :param force_fresh: Force fresh package built using empty system image.
         """
+        def _cleanup(directory):
+            log.info(u"Removing directory '%s'" % directory)
+            shutil.rmtree(directory)
+
         if not self.has_valid_os_image():
             try:
                 self.bootstrap_os()
@@ -124,7 +124,11 @@ class Builder(object):
                 log.error(u"Error during os bootstrap, aborting")
                 raise exceptions.PackageSystemError
 
-        #TODO
+        directory = tempfile.mkdtemp(dir=self.config.paths.workdir,
+                                     prefix="upaas_package_")
+
+        #TODO right now we always build fresh package
+
 
     def has_valid_os_image(self):
         """
@@ -140,40 +144,43 @@ class Builder(object):
         """
         Bootstrap base os image.
         """
-        def _cleanup(dir):
-            log.info(u"Removing directory '%s'" % dir)
-            shutil.rmtree(dir)
+        def _cleanup(directory):
+            log.info(u"Removing directory '%s'" % directory)
+            shutil.rmtree(directory)
 
         log.info(u"Bootstrapping os image using")
 
-        dir = tempfile.mkdtemp(dir=self.config.paths.workdir,
-                               prefix="upaas_bootstrap_")
-        log.debug(u"Created temporary directory for bootstrap at '%s'" % dir)
+        directory = tempfile.mkdtemp(dir=self.config.paths.workdir,
+                                     prefix="upaas_bootstrap_")
+        log.debug(u"Created temporary directory for bootstrap at "
+                  u"'%s'" % directory)
 
+        #FIXME allow for bootstrap command as a single/multiline string
         for cmd in self.config.bootstrap.commands:
-            cmd = cmd.replace("%workdir%", dir)
-            log.info(u"Executing bootstrap command: %s" % cmd)
+            cmd = cmd.replace("%workdir%", directory)
             try:
-                execute(cmd, timeout=self.config.bootstrap.timelimit, cwd=dir,
-                        env=self.config.bootstrap.env or [])
-            except CommandTimeoutAlarm as e:
+                commands.execute(cmd, timeout=self.config.bootstrap.timelimit,
+                                 cwd=directory,
+                                 env=self.config.bootstrap.env or [])
+            except commands.CommandTimeoutAlarm:
                 log.error(u"Bootstrap was taking too long and it was killed")
-                _cleanup(dir)
+                _cleanup(directory)
+                raise exceptions.OSBootstrapError
+            except commands.CommandFailed:
+                log.error(u"Bootstrap command failed")
+                _cleanup(directory)
                 raise exceptions.OSBootstrapError
         log.info(u"Bootstrap done, packing image")
 
-        archive_path = os.path.join(dir, "image.tar.gz")
-        try:
-            execute("tar -czpf %s *" % archive_path,
-                    timeout=self.config.bootstrap.timelimit, cwd=dir)
-        except CommandTimeoutAlarm:
-            log.error(u"Tar command was taking too long and it was killed")
-            _cleanup(dir)
+        archive_path = os.path.join(directory, "image.tar.gz")
+        if not tar.pack_tar(directory, archive_path,
+                            timeout=self.config.bootstrap.timelimit):
+            _cleanup(directory)
             raise exceptions.OSBootstrapError
         else:
             log.info(u"Image packed, uploading")
             self.storage.put(archive_path, distro.distro_image_filename())
 
         log.info(u"Image uploaded")
-        _cleanup(dir)
+        _cleanup(directory)
         log.info(u"All done")

@@ -1,0 +1,22 @@
+os:
+  ubuntu:
+    package:
+      - imagemagick
+      - libmagickcore-dev
+      - libmagickwand-dev
+
+
+interpreter:
+  type: ruby
+  versions:
+    - 1.9.3
+
+
+actions:
+  setup:
+    after: |
+      echo "
+      production:
+        adapter: sqlite3
+        database: db/redmine.db
+      " > config/database.yml

@@ -1,5 +1,6 @@
 # app metadata used for building packages
 
+
 os:
   ubuntu:
     packages:
@@ -7,14 +8,17 @@ os:
     script: # executed on fresh package
       - bla bla
 
+
+interpreter:
+  type: python|ruby|php
+  # will use highest compatible version
+  versions:
+    - 1.9.3
+    - 1.8.7
+
+
 actions:
   setup: # app setup on builder
     before:
     main:
-    after:
-  start: # start on backend
-    before:
-    after:
-  stop: # stop on backend
-    before:
     after:
