@@ -117,7 +117,24 @@ class Builder(object):
 
         :param force_fresh: Force fresh package built using empty system image.
         """
-        pass
+        if not self.has_valid_os_image():
+            try:
+                self.bootstrap_os()
+            except exceptions.OSBootstrapError:
+                log.error(u"Error during os bootstrap, aborting")
+                raise exceptions.PackageSystemError
+
+        #TODO
+
+    def has_valid_os_image(self):
+        """
+        Check if os image exists and is fresh enough.
+        """
+        if not self.storage.exists(distro.distro_image_filename()):
+            return False
+
+        #TODO check os image mtime
+        return True
 
     def bootstrap_os(self):
         """
@@ -142,7 +159,7 @@ class Builder(object):
             except CommandTimeoutAlarm as e:
                 log.error(u"Bootstrap was taking too long and it was killed")
                 _cleanup(dir)
-                return False
+                raise exceptions.OSBootstrapError
         log.info(u"Bootstrap done, packing image")
 
         archive_path = os.path.join(dir, "image.tar.gz")
@@ -152,7 +169,7 @@ class Builder(object):
         except CommandTimeoutAlarm:
             log.error(u"Tar command was taking too long and it was killed")
             _cleanup(dir)
-            return False
+            raise exceptions.OSBootstrapError
         else:
             log.info(u"Image packed, uploading")
             self.storage.put(archive_path, distro.distro_image_filename())
@@ -160,4 +177,3 @@ class Builder(object):
         log.info(u"Image uploaded")
         _cleanup(dir)
         log.info(u"All done")
-        return True

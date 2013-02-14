@@ -64,7 +64,7 @@ class BuilderApplication(cli.Application):
 
     def root_check(self):
         if os.geteuid() != 0:
-            log.error(u"%s must be run as root user" % self.PROGNAME)
+            self.log.error(u"%s must be run as root user" % self.PROGNAME)
             sys.exit(ExitCodes.not_root)
 
     def main(self, name):
