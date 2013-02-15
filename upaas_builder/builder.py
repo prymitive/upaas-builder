@@ -10,18 +10,40 @@ import tempfile
 import shutil
 import logging
 
-import lya
-
 from upaas import distro
 
-from upaas.storage.exceptions import InvalidStorageConfiguration
 from upaas import commands
 from upaas import tar
+from upaas import config
 
 from upaas_builder import exceptions
 
-
 log = logging.getLogger(__name__)
+
+
+class BuilderConfig(config.Config):
+
+    schema = {
+        "paths": {
+            "workdir": config.FSPathEntry(required=True, must_exist=True),
+            },
+        "storage": {
+            "handler": config.StringEntry(required=True),
+            "settings": {
+                "dir": config.FSPathEntry(required=True, must_exist=True),
+                }
+        },
+        "bootstrap": {
+            "timelimit": config.IntegerEntry(required=True),
+            "env": config.ListEntry(unicode),
+            "commands": config.ScriptEntry(required=True),
+            },
+        "commands": {
+            "install": config.StringEntry(required=True),
+            "uninstall": config.StringEntry(required=True),
+            }
+        #TODO interpreters?
+    }
 
 
 class Builder(object):
@@ -30,58 +52,8 @@ class Builder(object):
         """
         :param config_path: Path to builder configuration.
         """
-        self.config = self.validate_configuration(config_path)
+        self.config = BuilderConfig.from_file(config_path)
         self.storage = self.find_storage_handler()
-
-    def validate_configuration(self, config_path):
-        if not os.path.exists(config_path):
-            log.error(u"Configuration file not found at '%s'" % config_path)
-            raise exceptions.InvalidConfiguration
-
-        log.info(u"Loading configuration from '%s'" % config_path)
-        cfg = lya.AttrDict.from_yaml(config_path)
-
-        required = {
-            "paths": [{"name": "workdir", "types": [basestring], "path": True}],
-            "storage": [{"name": "handler", "types": [basestring]}],
-            "bootstrap": [
-                {"name": "timelimit", "types": [int]},
-                {"name": "commands", "types": [list, basestring]}
-            ],
-            "commands": [
-                {"name": "install", "types": [basestring]},
-                {"name": "uninstall", "types": [basestring]}
-            ],
-        }
-        for (key, options) in required.items():
-            if not cfg.get(key):
-                log.error(u"Section '%s' is missing from '%s'" % (key,
-                                                                  config_path))
-                raise exceptions.InvalidConfiguration
-            for option in options:
-                if not cfg[key].get(option["name"]):
-                    log.error(u"Option '%s' is missing from section '%s' in "
-                              u"'%s'" % (option["name"], key, config_path))
-                    raise exceptions.InvalidConfiguration
-                value = cfg[key][option["name"]]
-                is_valid = "types" not in option
-                for vtype in option.get("types", []):
-                    if isinstance(value, vtype):
-                        is_valid = True
-                        break
-                if not is_valid:
-                    log.error(u"Option '%s' from section '%s' in '%s' must "
-                              u"be %s, %s "
-                              u"given" % (option["name"], key, config_path,
-                                          " or ".join(
-                                              repr(t) for t in option["types"]
-                                          ), value.__class__.__name__))
-                    raise exceptions.InvalidConfiguration
-                if "path" in option and not os.path.exists(value):
-                    log.error(u"Path '%s' in option '%s' from section '%s' "
-                              u"does not exist" % (value, option["name"], key))
-                    raise exceptions.InvalidConfiguration
-        return cfg
 
     def find_storage_handler(self):
         """
@@ -101,8 +73,8 @@ class Builder(object):
             raise exceptions.InvalidConfiguration
         else:
             try:
-                return storage_handler(self.config.storage.settings)
-            except InvalidStorageConfiguration:
+                return storage_handler(self.config.storage.settings.dump())
+            except config.ConfigurationError:
                 log.error(u"Storage handler failed to initialize with given "
                           u"configuration")
                 raise exceptions.InvalidConfiguration
@@ -155,21 +127,19 @@ class Builder(object):
         log.debug(u"Created temporary directory for bootstrap at "
                   u"'%s'" % directory)
 
-        #FIXME allow for bootstrap command as a single/multiline string
-        for cmd in self.config.bootstrap.commands:
-            cmd = cmd.replace("%workdir%", directory)
-            try:
-                commands.execute(cmd, timeout=self.config.bootstrap.timelimit,
-                                 cwd=directory,
-                                 env=self.config.bootstrap.env or [])
-            except commands.CommandTimeoutAlarm:
-                log.error(u"Bootstrap was taking too long and it was killed")
-                _cleanup(directory)
-                raise exceptions.OSBootstrapError
-            except commands.CommandFailed:
-                log.error(u"Bootstrap command failed")
-                _cleanup(directory)
-                raise exceptions.OSBootstrapError
+        cmd = self.config.bootstrap.commands.replace("%workdir%", directory)
+        try:
+            commands.execute(cmd, timeout=self.config.bootstrap.timelimit,
+                             cwd=directory,
+                             env=self.config.bootstrap.env or [])
+        except commands.CommandTimeoutAlarm:
+            log.error(u"Bootstrap was taking too long and it was killed")
+            _cleanup(directory)
+            raise exceptions.OSBootstrapError
+        except commands.CommandFailed:
+            log.error(u"Bootstrap command failed")
+            _cleanup(directory)
+            raise exceptions.OSBootstrapError
         log.info(u"Bootstrap done, packing image")
 
         archive_path = os.path.join(directory, "image.tar.gz")
