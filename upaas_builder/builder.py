@@ -132,7 +132,7 @@ class Builder(object):
             commands.execute(cmd, timeout=self.config.bootstrap.timelimit,
                              cwd=directory,
                              env=self.config.bootstrap.env or [])
-        except commands.CommandTimeoutAlarm:
+        except commands.CommandTimeout:
             log.error(u"Bootstrap was taking too long and it was killed")
             _cleanup(directory)
             raise exceptions.OSBootstrapError
