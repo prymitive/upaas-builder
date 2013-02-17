@@ -26,22 +26,22 @@ class BuilderConfig(config.Config):
     schema = {
         "paths": {
             "workdir": config.FSPathEntry(required=True, must_exist=True),
-            },
+        },
         "storage": {
             "handler": config.StringEntry(required=True),
             "settings": {
                 "dir": config.FSPathEntry(required=True, must_exist=True),
-                }
+            }
         },
         "bootstrap": {
             "timelimit": config.IntegerEntry(required=True),
             "env": config.ListEntry(unicode),
             "commands": config.ScriptEntry(required=True),
-            },
+        },
         "commands": {
             "install": config.StringEntry(required=True),
             "uninstall": config.StringEntry(required=True),
-            }
+        }
         #TODO interpreters?
     }
 
@@ -100,7 +100,6 @@ class Builder(object):
                                      prefix="upaas_package_")
 
         #TODO right now we always build fresh package
-
 
     def has_valid_os_image(self):
         """
