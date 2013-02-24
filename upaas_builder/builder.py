@@ -35,6 +35,7 @@ class Builder(object):
         """
         self.metadata = metadata
         self.config = BuilderConfig.from_file(config_path)
+
         self.actions = self.parse_actions(metadata)
         self.envs = self.parse_envs(metadata)
         self.os_packages = self.parse_packages(metadata)
@@ -75,6 +76,14 @@ class Builder(object):
         final all env variables used in actions.
         """
         ret = {}
+        try:
+            value = self.config.interpreters["env"]
+            if value:
+                ret.update(value)
+                log.debug(u"Got env variables for all interpreters: %s" % (
+                    u", ".join([u"%s=%s" % (k, v) for k, v in value.items()])))
+        except KeyError:
+            pass
         for version in ["any"] + meta.interpreter.versions:
             try:
                 value = self.config.interpreters[meta.interpreter.type][
@@ -99,6 +108,13 @@ class Builder(object):
         final list of all packages to install.
         """
         ret = set()
+        try:
+            for pkg in self.config.interpreters["packages"]:
+                ret.add(pkg)
+                log.debug(u"Will install package '%s' from builder config "
+                          u"for all interpreters" % pkg)
+        except KeyError:
+            pass
         for version in ["any"] + meta.interpreter.versions:
             try:
                 for pkg in self.config.interpreters[meta.interpreter.type][
@@ -165,7 +181,8 @@ class Builder(object):
         directory = tempfile.mkdtemp(dir=self.config.paths.workdir,
                                      prefix="upaas_package_")
         workdir = os.path.join(directory, "workdir")
-        homedir = os.path.join(workdir, "home/app")
+        chroot_homedir = "/home/app"
+        homedir = os.path.join(workdir, chroot_homedir.lstrip("/"))
         os.mkdir(workdir, 0755)
         log.info(u"Working directory created at '%s'" % workdir)
 
@@ -179,12 +196,12 @@ class Builder(object):
             raise exceptions.PackageUserError
         log.info(u"All packages installed")
 
-        if not self.clone(workdir, homedir):
+        if not self.clone(workdir, chroot_homedir):
             _cleanup(directory)
             raise exceptions.PackageUserError
         log.info(u"Application cloned")
 
-        if not self.run_actions(workdir, homedir):
+        if not self.run_actions(workdir, chroot_homedir):
             _cleanup(directory)
             raise exceptions.PackageUserError
         log.info(u"All actions executed")
@@ -246,6 +263,7 @@ class Builder(object):
                 try:
                     commands.execute(cmd,
                                      timeout=self.config.commands.timelimit,
+                                     env=self.metadata.repository.env,
                                      output_loglevel=logging.INFO)
                 except commands.CommandTimeout:
                     log.error(u"Cloning repository is taking too long, "
@@ -264,7 +282,8 @@ class Builder(object):
                     try:
                         commands.execute(cmd,
                                          timeout=self.config.commands.timelimit,
-                                         env=self.envs)
+                                         env=self.envs,
+                                         output_loglevel=logging.INFO)
                     except commands.CommandTimeout:
                         log.error(u"Command is taking to long to execute, "
                                   u"aborting")

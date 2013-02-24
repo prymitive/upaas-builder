@@ -26,12 +26,25 @@ bootstrap:
 
 
 commands:
+  # how long any action command can take to execute
+  timelimit: 600
   # how to install or remove package
-  install: apt-get install %package%
-  uninstall: apt-get remove %package%
+  install:
+    env:
+      http_proxy: http://localhost:3128/
+      DEBIAN_FRONTEND: noninteractive
+    cmd: apt-get install -y %package%
+  uninstall:
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    cmd: apt-get remove -y %package%
 
 
 interpreters:
+
+  env:
+  packages:
+    - build-essential
 
   ruby:
     any:

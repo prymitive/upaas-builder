@@ -2,10 +2,12 @@
 
 
 os:
-  ubuntu:
+  Ubuntu:
     packages:
       - python2.7
-    script: # executed on fresh package
+    script: # execute on every package
+      - sudo apt-get update
+    bootstrap: # executed on fresh package
       - bla bla
 
 
@@ -17,7 +19,24 @@ interpreter:
     - 1.8.7
 
 
+repository:
+  env:
+    MYENV: value
+  clone: git clone $source_address %destination%
+  update:
+    - git reset --hard
+    - git pull
+  info: git log -n 1
+  changelog: git log --no-merges %old%..%new%"
+
+
+env: # env variables set for running app
+  MYENV: value
+
+
 actions:
+  env: # env variables used while executing actions
+    MYENV: value
   setup: # app setup on builder
     before:
     main:

@@ -1,6 +1,11 @@
 os:
-  ubuntu:
-    package:
+  Ubuntu:
+    packages:
+      - git-core
+      - rake
+      - libpq-dev
+      - libmysqlclient-dev
+      - libsqlite3-dev
       - imagemagick
       - libmagickcore-dev
       - libmagickwand-dev
@@ -12,8 +17,20 @@ interpreter:
     - 1.9.3
 
 
+repository:
+  clone: git clone --depth=100 --quiet --branch 2.2-stable git://github.com/redmine/redmine.git %destination%
+  update:
+    - git reset --hard
+    - git pull
+  info: git log -n 1
+  changelog: git log --no-merges %old%..%new%"
+
+
 actions:
   setup:
+    main:
+      - gem install bundler
+      - bundle install --without test development
     after: |
       echo "
       production:

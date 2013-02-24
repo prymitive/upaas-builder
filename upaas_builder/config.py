@@ -49,6 +49,7 @@ class MetadataConfig(config.Config):
             "versions": config.ListEntry(unicode),
         },
         "repository": {
+            "env": config.DictEntry(value_type=unicode),
             "clone": config.ScriptEntry(required=True),
             "update": config.ScriptEntry(required=True),
             "info": config.ScriptEntry(required=True),
