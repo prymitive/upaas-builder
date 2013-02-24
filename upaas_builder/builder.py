@@ -227,7 +227,7 @@ class Builder(object):
         os_image_path = os.path.join(directory, distro.distro_image_filename())
         log.info(u"Fetching os image")
         try:
-            self.storage.get(distro.distro_image_filename(),os_image_path)
+            self.storage.get(distro.distro_image_filename(), os_image_path)
         except StorageError:
             log.error(u"Storage error while fetching os image")
             return False
@@ -280,10 +280,9 @@ class Builder(object):
             for cmd in self.actions[name]:
                 with Chroot(workdir, workdir=homedir):
                     try:
-                        commands.execute(cmd,
-                                         timeout=self.config.commands.timelimit,
-                                         env=self.envs,
-                                         output_loglevel=logging.INFO)
+                        commands.execute(
+                            cmd, timeout=self.config.commands.timelimit,
+                            env=self.envs, output_loglevel=logging.INFO)
                     except commands.CommandTimeout:
                         log.error(u"Command is taking to long to execute, "
                                   u"aborting")
