@@ -13,15 +13,19 @@ import logging
 
 from plumbum import cli
 
+from upaas.config import ConfigurationError
+
 from upaas_builder import __version__ as UPAAS_VERSION
 from upaas_builder import exceptions
 from upaas_builder.builder import Builder
+from upaas_builder.config import MetadataConfig
 
 
 class ExitCodes:
     ok = 0
     config_error = 1
-    not_root = 2
+    metadata_error = 2
+    not_root = 3
 
 
 class BuilderApplication(cli.Application):
@@ -67,17 +71,24 @@ class BuilderApplication(cli.Application):
             self.log.error(u"%s must be run as root user" % self.PROGNAME)
             sys.exit(ExitCodes.not_root)
 
-    def main(self, name):
+    def main(self, metadata):
         self.setup_logger()
         self.root_check()
+
         try:
-            self.builder = Builder(self.config_path)
+            self.metadata = MetadataConfig.from_file(metadata)
+        except ConfigurationError:
+            self.log.error(u"Invalid metadata, aborting")
+            sys.exit(ExitCodes.metadata_error)
+
+        try:
+            self.builder = Builder(self.config_path, self.metadata)
         except exceptions.InvalidConfiguration:
             self.log.error(u"Invalid configuration, aborting")
             sys.exit(ExitCodes.config_error)
 
-        self.log.info(u"Building package for '%s'" % name)
-        self.builder.bootstrap_os()
+        self.log.info(u"Building package from '%s'" % metadata)
+        self.builder.build_package(force_fresh=self.fresh)
 
 
 if __name__ == "__main__":
