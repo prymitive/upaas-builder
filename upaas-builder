@@ -7,13 +7,11 @@
 
 
 import os
-import sys
-import codecs
-import logging
 
 from plumbum import cli
 
 from upaas.config import ConfigurationError
+from upaas.cli.base import UPaaSApplication
 
 from upaas_builder import __version__ as UPAAS_VERSION
 from upaas_builder import exceptions
@@ -28,48 +26,21 @@ class ExitCodes:
     not_root = 3
 
 
-class BuilderApplication(cli.Application):
+class BuilderApplication(UPaaSApplication):
 
     VERSION = UPAAS_VERSION
 
     fresh = cli.Flag(["f", "force-fresh"], help="Force building fresh package")
-
-    log = None
-    log_level = "info"
-    log_output = "-"
-
-    @cli.switch(["l", "log-level"], str, help="Logging level")
-    def set_log_level(self, level):
-        self.log_level = level
-
-    @cli.switch(["o", "log-output"], str, help="Log file ('-' for console)")
-    def set_log_output(self, output):
-        self.log_output = output
 
     @cli.switch(["c", "config"], str, help="Configuration file path",
                 mandatory=True)
     def set_config_path(self, path):
         self.config_path = path
 
-    def setup_logger(self):
-        if self.log_output == "-":
-            handler = logging.StreamHandler(
-                codecs.getwriter('utf-8')(sys.stdout))
-        else:
-            handler = logging.FileHandler(self.log_output, encoding='utf-8')
-
-        handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s - %(message)s"))
-        self.log = logging.getLogger()
-        self.log.addHandler(handler)
-
-        self.log.setLevel(getattr(logging, self.log_level.upper(),
-                                  logging.INFO))
-
     def root_check(self):
         if os.geteuid() != 0:
             self.log.error(u"%s must be run as root user" % self.PROGNAME)
-            sys.exit(ExitCodes.not_root)
+            return ExitCodes.not_root
 
     def main(self, metadata):
         self.setup_logger()
@@ -79,13 +50,13 @@ class BuilderApplication(cli.Application):
             self.metadata = MetadataConfig.from_file(metadata)
         except ConfigurationError:
             self.log.error(u"Invalid metadata, aborting")
-            sys.exit(ExitCodes.metadata_error)
+            return ExitCodes.metadata_error
 
         try:
             self.builder = Builder(self.config_path, self.metadata)
         except exceptions.InvalidConfiguration:
             self.log.error(u"Invalid configuration, aborting")
-            sys.exit(ExitCodes.config_error)
+            return ExitCodes.config_error
 
         self.log.info(u"Building package from '%s'" % metadata)
         self.builder.build_package(force_fresh=self.fresh)
