@@ -12,11 +12,11 @@ from plumbum import cli
 
 from upaas.config import ConfigurationError
 from upaas.cli.base import UPaaSApplication
+from upaas.metadata import MetadataConfig
 
 from upaas_builder import __version__ as UPAAS_VERSION
 from upaas_builder import exceptions
 from upaas_builder.builder import Builder
-from upaas_builder.config import MetadataConfig
 
 
 class ExitCodes:
