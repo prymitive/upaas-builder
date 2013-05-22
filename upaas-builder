@@ -10,9 +10,9 @@ import os
 
 from plumbum import cli
 
-from upaas.config import ConfigurationError
+from upaas.config.base import ConfigurationError
 from upaas.cli.base import UPaaSApplication
-from upaas.metadata import MetadataConfig
+from upaas.config.metadata import MetadataConfig
 
 from upaas_builder import __version__ as UPAAS_VERSION
 from upaas_builder import exceptions

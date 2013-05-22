@@ -5,36 +5,36 @@
 """
 
 
-from upaas import config
+from upaas.config import base
 
 
-class BuilderConfig(config.Config):
+class BuilderConfig(base.Config):
 
     schema = {
         "paths": {
-            "workdir": config.FSPathEntry(required=True, must_exist=True),
+            "workdir": base.FSPathEntry(required=True, must_exist=True),
         },
         "storage": {
-            "handler": config.StringEntry(required=True),
+            "handler": base.StringEntry(required=True),
             "settings": {
-                "dir": config.FSPathEntry(required=True, must_exist=True),
+                "dir": base.FSPathEntry(required=True, must_exist=True),
             }
         },
         "bootstrap": {
-            "timelimit": config.IntegerEntry(required=True),
-            "env": config.DictEntry(value_type=unicode),
-            "commands": config.ScriptEntry(required=True),
+            "timelimit": base.IntegerEntry(required=True),
+            "env": base.DictEntry(value_type=unicode),
+            "commands": base.ScriptEntry(required=True),
         },
         "commands": {
-            "timelimit": config.IntegerEntry(required=True),
+            "timelimit": base.IntegerEntry(required=True),
             "install": {
-                "env": config.DictEntry(value_type=unicode),
-                "cmd": config.StringEntry(required=True),
+                "env": base.DictEntry(value_type=unicode),
+                "cmd": base.StringEntry(required=True),
             },
             "uninstall": {
-                "env": config.DictEntry(value_type=unicode),
-                "cmd": config.StringEntry(required=True),
+                "env": base.DictEntry(value_type=unicode),
+                "cmd": base.StringEntry(required=True),
             },
         },
-        "interpreters": config.WildcardEntry(),
+        "interpreters": base.WildcardEntry(),
     }
