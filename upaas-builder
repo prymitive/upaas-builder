@@ -40,11 +40,13 @@ class BuilderApplication(UPaaSApplication):
     def root_check(self):
         if os.geteuid() != 0:
             self.log.error(u"%s must be run as root user" % self.PROGNAME)
-            return ExitCodes.not_root
+            return exit(ExitCodes.not_root)
 
     def main(self, metadata):
         self.setup_logger()
-        self.root_check()
+        r = self.root_check()
+        if r:
+            return r
 
         try:
             self.metadata = MetadataConfig.from_file(metadata)
