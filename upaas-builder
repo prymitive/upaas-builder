@@ -9,14 +9,15 @@
 import os
 
 from plumbum import cli
+from upaas.builder import exceptions
 
-from upaas.config.base import ConfigurationError
+from upaas.config.base import ConfigurationError, load_config
 from upaas.cli.base import UPaaSApplication
 from upaas.config.metadata import MetadataConfig
+from upaas.config.builder import BuilderConfig
+from upaas.builder.builder import Builder
 
 from upaas_builder import __version__ as UPAAS_VERSION
-from upaas_builder import exceptions
-from upaas_builder.builder import Builder
 
 
 class ExitCodes:
@@ -32,11 +33,6 @@ class BuilderApplication(UPaaSApplication):
 
     fresh = cli.Flag(["f", "force-fresh"], help="Force building fresh package")
 
-    @cli.switch(["c", "config"], str, help="Configuration file path",
-                mandatory=True)
-    def set_config_path(self, path):
-        self.config_path = path
-
     def root_check(self):
         if os.geteuid() != 0:
             self.log.error(u"%s must be run as root user" % self.PROGNAME)
@@ -48,6 +44,11 @@ class BuilderApplication(UPaaSApplication):
         if r:
             return r
 
+        builder_config = load_config(BuilderConfig, 'builder.yml')
+        if not builder_config:
+            self.log.error(u"Missing builder configuration")
+            return ExitCodes.config_error
+
         try:
             self.metadata = MetadataConfig.from_file(metadata)
         except ConfigurationError:
@@ -55,9 +56,9 @@ class BuilderApplication(UPaaSApplication):
             return ExitCodes.metadata_error
 
         try:
-            self.builder = Builder(self.config_path, self.metadata)
+            self.builder = Builder(builder_config, self.metadata)
         except exceptions.InvalidConfiguration:
-            self.log.error(u"Invalid configuration, aborting")
+            self.log.error(u"Invalid builder configuration, aborting")
             return ExitCodes.config_error
 
         self.log.info(u"Building package from '%s'" % metadata)

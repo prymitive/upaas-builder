@@ -21,6 +21,8 @@ bootstrap:
   # envs are optional
   env:
     http_proxy: http://localhost:3128/
+    LC_ALL: C
+    LANG: C
   commands:
     - debootstrap --components=main,universe,multiverse,restricted `lsb_release -sc` %workdir%
 
@@ -33,16 +35,22 @@ commands:
     env:
       http_proxy: http://localhost:3128/
       DEBIAN_FRONTEND: noninteractive
+      LC_ALL: C
+      LANG: C
     cmd: apt-get install -y %package%
   uninstall:
     env:
       DEBIAN_FRONTEND: noninteractive
+      LC_ALL: C
+      LANG: C
     cmd: apt-get remove -y %package%
 
 
 interpreters:
 
   env:
+    LC_ALL: C
+    LANG: C
   packages:
     - build-essential
 
