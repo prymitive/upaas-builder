@@ -28,12 +28,16 @@ repository:
 
 actions:
   setup:
-    main:
-      - gem install bundler
-      - bundle install --without test development
-    after: |
+    before: |
       echo "
       production:
         adapter: sqlite3
         database: db/redmine.db
       " > config/database.yml
+    main:
+      - gem install bundler
+      - bundle install --without test development
+    after:
+      - rake generate_secret_token
+      - rake db:migrate
+      - REDMINE_LANG=en rake redmine:load_default_data
