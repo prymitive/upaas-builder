@@ -51,8 +51,14 @@ interpreters:
   env:
     LC_ALL: C
     LANG: C
+
   packages:
     - build-essential
+
+  actions:
+    setup:
+      system:
+        - apt-get dist-upgrade -y
 
   ruby:
     any:
