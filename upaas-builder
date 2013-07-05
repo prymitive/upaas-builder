@@ -11,10 +11,10 @@ import os
 from plumbum import cli
 from upaas.builder import exceptions
 
-from upaas.config.base import ConfigurationError, load_config
+from upaas.config.base import ConfigurationError
+from upaas.config.main import load_main_config
 from upaas.cli.base import UPaaSApplication
 from upaas.config.metadata import MetadataConfig
-from upaas.config.builder import BuilderConfig
 from upaas.builder.builder import Builder
 
 from upaas_builder import __version__ as UPAAS_VERSION
@@ -44,9 +44,9 @@ class BuilderApplication(UPaaSApplication):
         if r:
             return r
 
-        builder_config = load_config(BuilderConfig, 'builder.yml')
+        builder_config = load_main_config()
         if not builder_config:
-            self.log.error(u"Missing builder configuration")
+            self.log.error(u"Missing uPaaS configuration")
             return ExitCodes.config_error
 
         try:
@@ -58,7 +58,7 @@ class BuilderApplication(UPaaSApplication):
         try:
             self.builder = Builder(builder_config, self.metadata)
         except exceptions.InvalidConfiguration:
-            self.log.error(u"Invalid builder configuration, aborting")
+            self.log.error(u"Invalid uPaaS configuration, aborting")
             return ExitCodes.config_error
 
         self.log.info(u"Building package from '%s'" % metadata)
