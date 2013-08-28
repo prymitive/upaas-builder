@@ -9,6 +9,9 @@ os:
       - sudo apt-get update
     bootstrap: # executed on fresh package
       - bla bla
+     12.04:
+      packages:
+        - python3.2
 
 
 interpreter:
