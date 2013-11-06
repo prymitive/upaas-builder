@@ -17,7 +17,6 @@ from upaas.builder import exceptions
 from upaas.config.base import ConfigurationError
 
 from upaas_admin.config import load_main_config
-from upaas_builder import __version__ as UPAAS_VERSION
 
 
 class ExitCodes:
@@ -28,8 +27,6 @@ class ExitCodes:
 
 
 class BuilderApplication(UPaaSApplication):
-
-    VERSION = UPAAS_VERSION
 
     fresh = cli.Flag(["f", "force-fresh"], help="Force building fresh package")
 
