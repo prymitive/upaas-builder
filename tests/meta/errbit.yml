@@ -29,18 +29,6 @@ repository:
 actions:
   setup:
     before: |
-      echo "
-      production:
-        sessions:
-          default:
-            database: errbit
-            hosts:
-              - 'upaas-dev:27017'
-            username: errbit
-            password: errB1t
-        options:
-          identity_map_enabled: true
-      " > config/mongoid.yml
       cp config/config.example.yml config/config.yml
     main:
       - gem install bundler
@@ -58,3 +46,16 @@ actions:
       rake db:migrate
       echo ">> Precompilling assets"
       rake assets:precompile
+
+files:
+  config/mongoid.yml: |
+    production:
+      sessions:
+        default:
+          database: errbit
+          hosts:
+            - 'upaas-dev:27017'
+          username: errbit
+          password: errB1t
+      options:
+        identity_map_enabled: true

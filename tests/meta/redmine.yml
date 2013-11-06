@@ -29,12 +29,6 @@ repository:
 
 actions:
   setup:
-    before: |
-      echo "
-      production:
-        adapter: sqlite3
-        database: db/redmine.db
-      " > config/database.yml
     main:
       - gem install bundler
       - bundle install --without test development
@@ -53,3 +47,10 @@ actions:
 
 env:
   REDMINE_LANG: en
+
+
+files:
+  config/database.yml: |
+    production:
+      adapter: sqlite3
+      database: db/redmine.db
